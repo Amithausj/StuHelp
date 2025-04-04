@@ -21,12 +21,14 @@ if user_query:
         if answer == "❌ Sorry, I couldn't find any answer related to your question on the ITC site.":
             try:
                 # Fallback to OpenAI if no answer found on ITC site
-                response = openai.Completion.create(
-                    engine="text-davinci-003",  # or other engines if needed
-                    prompt=user_query,
-                    max_tokens=150
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",  # Or any model you are using
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "user", "content": user_query},
+                    ],
                 )
-                openai_answer = response.choices[0].text.strip()
+                openai_answer = response['choices'][0]['message']['content'].strip()
                 st.write(f"🔍 OpenAI Answer: {openai_answer}")
             except Exception as e:
                 st.error(f"An error occurred with OpenAI: {e}")
