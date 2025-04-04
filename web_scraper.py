@@ -2,12 +2,37 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import logging
+import openai
 
 # Setup logging for error handling
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Set up OpenAI API key
+openai.api_key = 'YOUR_OPENAI_API_KEY'
+
+def get_openai_answer(query):
+    """Fetch answer from OpenAI API (ChatGPT)"""
+    try:
+        # Make a request to OpenAI's GPT model (using GPT-3 or GPT-4 depending on your key)
+        response = openai.Completion.create(
+            model="text-davinci-003",  # Or use gpt-4 if available and preferred
+            prompt=query,
+            max_tokens=500,
+            n=1,
+            stop=None,
+            temperature=0.7
+        )
+        
+        # Extract the response from the OpenAI API result
+        answer = response.choices[0].text.strip()
+        return answer
+    except Exception as e:
+        logger.error(f"Error fetching answer from OpenAI: {e}")
+        return "❌ Sorry, there was an error retrieving the answer from OpenAI."
+
 def get_itc_pages(base_url="https://mgt.sjp.ac.lk/itc/"):
+    """Fetch the links from the ITC website"""
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -21,7 +46,6 @@ def get_itc_pages(base_url="https://mgt.sjp.ac.lk/itc/"):
             links.add(full_url)
     logger.info(f"Found {len(links)} links on the site.")
     return list(links)
-
 
 def search_pages_for_answer(query, urls):
     """Search the ITC pages for a matching answer"""
@@ -40,10 +64,15 @@ def search_pages_for_answer(query, urls):
             continue
     return "❌ Sorry, I couldn't find any answer related to your question on the ITC site."
 
-
 # Example usage:
 if __name__ == "__main__":
+    # Option 1: Use OpenAI API to answer a query
+    user_query = "What is Business Information Systems?"  # Replace with actual query
+    answer_from_openai = get_openai_answer(user_query)
+    print(f"OpenAI Answer: {answer_from_openai}")
+
+    # Option 2: Scrape ITC website for an answer
     links = get_itc_pages()
     query = "business information systems"  # Replace with the user's query
-    answer = search_pages_for_answer(query, links)
-    print(answer)
+    answer_from_scraping = search_pages_for_answer(query, links)
+    print(f"Scraped Answer: {answer_from_scraping}")
