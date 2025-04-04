@@ -1,24 +1,44 @@
+import openai
 import streamlit as st
-from web_scraper import get_itc_pages, search_pages_for_answer
 
-st.set_page_config(page_title="ITC Student Chatbot", layout="centered")
-st.title("💬 ITC Student Chatbot")
-st.markdown("Ask me anything about the Department of IT or the BSc in Business Information Systems degree!")
+# Set up your OpenAI API key
+openai.api_key = 'YOUR_OPENAI_API_KEY'
 
-# Load ITC site links
-@st.cache_data
-def load_pages():
-    return get_itc_pages()
+def get_openai_answer(query):
+    """Fetch answer from OpenAI API (ChatGPT)"""
+    try:
+        # Make a request to OpenAI's GPT model (using GPT-3 or GPT-4 depending on your key)
+        response = openai.Completion.create(
+            model="text-davinci-003",  # Or use gpt-4 if available and preferred
+            prompt=query,
+            max_tokens=500,
+            n=1,
+            stop=None,
+            temperature=0.7
+        )
+        
+        # Extract the response from the OpenAI API result
+        answer = response.choices[0].text.strip()
+        return answer
+    except Exception as e:
+        return f"Error fetching answer from OpenAI: {e}"
 
-pages = load_pages()
+# Streamlit app interface
+def chatbot_interface():
+    st.title("IT Department Chatbot")
 
-# Chat input
-query = st.text_input("Your Question:", "")
+    # Input box for user query
+    user_query = st.text_input("Ask me anything related to the IT Department or the BSc in Business Information Systems Degree:")
 
-if st.button("Ask"):
-    if query.strip():
-        with st.spinner("Searching ITC site..."):
-            answer = search_pages_for_answer(query, pages)
-            st.success(answer)
-    else:
-        st.warning("Please enter a question to search.")
+    # Button to get the answer
+    if st.button("Get Answer"):
+        if user_query:
+            # Fetch the answer from OpenAI API
+            answer = get_openai_answer(user_query)
+            st.write(f"**Answer**: {answer}")
+        else:
+            st.write("Please enter a question.")
+
+# Run the chatbot
+if __name__ == "__main__":
+    chatbot_interface()
