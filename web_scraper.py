@@ -1,80 +1,43 @@
-import streamlit as st
-import pandas as pd
-import os
+import requests
+from bs4 import BeautifulSoup
 
-# File path for storing chat history
-HISTORY_FILE = "chat_history.csv"
-
-# Load research data from CSV
-@st.cache_data
-def load_research_data():
-    return pd.read_csv('research_data.csv')
-
-# Search function
-def search_research(query, df):
-    query = query.lower()
-    filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(query).any(), axis=1)]
-    return filtered_df
-
-# Load chat history from file
-def load_chat_history():
-    if os.path.exists(HISTORY_FILE):
-        return pd.read_csv(HISTORY_FILE)
+# Function to scrape the ITC pages
+def get_itc_pages():
+    base_url = "https://mgt.sjp.ac.lk/itc/"
+    response = requests.get(base_url)
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        print("Successfully retrieved the page!")
     else:
-        return pd.DataFrame(columns=["Query", "Title", "Keywords", "Year", "Student", "Supervisor"])
+        print(f"Failed to retrieve page: {response.status_code}")
+        return []
 
-# Save chat history to file
-def save_chat_history(chat_history):
-    chat_history.to_csv(HISTORY_FILE, index=False)
+    # Parse the page content
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    # Extracting the text content of all paragraphs or divs
+    # Update based on the structure of the website
+    content = soup.find_all(['p', 'div'])  # Modify this based on which elements contain useful information
 
-# Set page config
-st.set_page_config(page_title="Research Chatbot", layout="wide")
+    if not content:
+        print("No content found!")
+    
+    # Returning all the paragraph/div texts as a list
+    return [element.get_text() for element in content]
 
-# Header
-st.markdown("<h1 style='text-align: center; color: darkblue;'>Department of Information Technology, FMSC, USJ</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;'>📚 Research Chatbot</h2>", unsafe_allow_html=True)
+# Function to search for an answer in the scraped data
+def search_pages_for_answer(query, pages):
+    query = query.lower()  # Case insensitive search
+    answer = None
 
-# Load data
-df = load_research_data()
+    # Check each page for the query
+    for page in pages:
+        if query in page.lower():  # Look for the query in the text (case insensitive)
+            answer = page.strip()  # Return the first matching text
+            break
 
-# Load chat history
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = load_chat_history()
+    if not answer:
+        return "Sorry, I couldn't find an answer to your question."
 
-# --- UI Layout ---
-st.markdown("### 🔍 Ask about research topics:")
-user_query = st.text_input("Enter your question:")
-
-if st.button("Search"):
-    if user_query:
-        results = search_research(user_query, df)
-        
-        if results.empty:
-            st.error("❌ No matching research found.")
-            new_entry = pd.DataFrame([[user_query, "No Results", "", "", "", ""]], 
-                                     columns=["Query", "Title", "Keywords", "Year", "Student", "Supervisor"])
-        else:
-            results.insert(0, "Query", user_query)
-            new_entry = results
-
-        # Append new results to history and save
-        st.session_state.chat_history = pd.concat([new_entry, st.session_state.chat_history], ignore_index=True)
-        save_chat_history(st.session_state.chat_history)
-
-# --- Display Chat History in Table Format ---
-st.markdown("---")
-st.markdown("### 🗂️ Chat History")
-if not st.session_state.chat_history.empty:
-    st.dataframe(st.session_state.chat_history)
-else:
-    st.info("Chat history is empty. Start searching!")
-
-# --- Clear History Button ---
-if st.button("Clear History"):
-    # Clear session state and history file
-    st.session_state.chat_history = pd.DataFrame(columns=["Query", "Title", "Keywords", "Year", "Student", "Supervisor"])
-    save_chat_history(st.session_state.chat_history)
-    st.success("Chat history has been cleared!")
-
-# Footer
-st.markdown("<hr><p style='text-align: center;'>© 2025 : Department of Information Technology, FMSC, USJ</p>", unsafe_allow_html=True)
+    return answer
